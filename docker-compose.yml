@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Service 1: Your Spring Boot Application
+  app:
+    build: .                 # Build the Dockerfile in the current folder
+    ports:
+      - "8080:8080"          # Map local port 8080 to container port 8080
+    environment:
+      # These override the "localhost" setting in application.properties
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - APP_RATE_LIMIT_CAPACITY=5
+      - APP_RATE_LIMIT_PERIOD_SECONDS=60
+    depends_on:
+      redis:
+        condition: service_healthy # Wait until Redis is actually ready
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+
+  # Service 2: The Redis Database
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
