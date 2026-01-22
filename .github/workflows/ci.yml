@@ -1,0 +1,47 @@
+name: Java CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    # We need a Redis service for the tests to talk to
+    services:
+      redis:
+        image: redis:6-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    # 1. Check out the code
+    - uses: actions/checkout@v3
+
+    # 2. Set up Java 17
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    # 3. Run Unit & Integration Tests
+    # We point the app to the 'redis' service defined above (localhost in CI env)
+    - name: Run Tests with Maven
+      run: mvn test
+      env:
+        SPRING_DATA_REDIS_HOST: localhost
+        SPRING_DATA_REDIS_PORT: 6379
+
+    # 4. Build the Docker Image (To prove it builds correctly)
+    - name: Build Docker Image
+      run: docker build -t rate-limiter:latest .
